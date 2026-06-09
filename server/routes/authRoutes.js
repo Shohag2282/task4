@@ -2,18 +2,8 @@ import express from 'express'
 import { connectToDatabase } from '../lib/db.js'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
-import nodemailer from 'nodemailer'
 
 const router = express.Router()
-
-// Gmail SMTP setup using nodemailer
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-})
 
 // ── Register ──
 router.post('/register', async (req, res) => {
@@ -50,43 +40,29 @@ router.post('/register', async (req, res) => {
                 </div>
             `
         
-        const isProduction = process.env.RENDER === 'true'
-
-        // Send verification email via hybrid dispatch (Resend HTTP on Render, Gmail SMTP locally)
+        // Send verification email using Brevo HTTP API (Works locally and on Render without SMTP block)
         try {
-            if (isProduction) {
-                console.log('Production detected: Sending email via Resend HTTP API...')
-                const response = await fetch('https://api.resend.com/emails', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        from: 'onboarding@resend.dev',
-                        to: email,
-                        subject: 'Verify Your Email Address',
-                        html: htmlContent
-                    })
+            console.log('Sending email via Brevo HTTP API to:', email)
+            const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: {
+                    'api-key': process.env.BREVO_API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sender: { name: 'Auth App', email: 'shamimhossen2282@gmail.com' },
+                    to: [{ email: email }],
+                    subject: 'Verify Your Email Address',
+                    htmlContent: htmlContent
                 })
-                const data = await response.json()
-                if (!response.ok) {
-                    throw new Error(data.message || JSON.stringify(data))
-                }
-                console.log('Verification email sent successfully via Resend API!', data)
-            } else {
-                console.log('Local environment detected: Sending email via Gmail SMTP...')
-                const mailOptions = {
-                    from: `"Auth App" <${process.env.EMAIL_USER}>`,
-                    to: email,
-                    subject: 'Email Verification',
-                    html: htmlContent
-                }
-                await transporter.sendMail(mailOptions)
-                console.log('Verification email sent successfully via Gmail SMTP!')
+            })
+            const data = await response.json()
+            if (!response.ok) {
+                throw new Error(data.message || JSON.stringify(data))
             }
+            console.log('Verification email sent successfully via Brevo API!', data)
         } catch (mailErr) {
-            console.error('Failed to send verification email:', mailErr)
+            console.error('Failed to send verification email via Brevo:', mailErr)
             throw new Error(`Email sending failed: ${mailErr.message}`)
         }
         
