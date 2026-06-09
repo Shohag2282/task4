@@ -197,7 +197,12 @@ router.put('/unblock', async (req, res) => {
     if (!ids || ids.length === 0) return res.status(400).json({ message: "No users selected" })
     try {
         const db = await connectToDatabase()
-        await db.query("UPDATE users SET status='Active' WHERE id IN (?)", [ids])
+        // Only restore to 'Active' if email is verified (verification_token is NULL)
+        // Unverified users remain 'Unverified' even after unblocking
+        await db.query(
+            "UPDATE users SET status = CASE WHEN verification_token IS NULL THEN 'Active' ELSE 'Unverified' END WHERE id IN (?)",
+            [ids]
+        )
         res.status(200).json({ message: "Users unblocked" })
     } catch (err) {
         res.status(500).json(err)
