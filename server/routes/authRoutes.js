@@ -8,7 +8,9 @@ const router = express.Router()
 
 // Nodemailer SMTP Transporter setup
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -34,7 +36,10 @@ router.post('/register', async (req, res) => {
         )
         
         // Send verification email
-        const verificationLink = `http://localhost:300/auth/verify?token=${verificationToken}`
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol
+        const host = req.get('host')
+        const verificationLink = `${protocol}://${host}/auth/verify?token=${verificationToken}`
+        
         const mailOptions = {
             from: `"Auth App" <${process.env.EMAIL_USER}>`,
             to: email,
@@ -52,7 +57,12 @@ router.post('/register', async (req, res) => {
             `
         }
         
-        await transporter.sendMail(mailOptions)
+        // Wrap email sending in try-catch so registration does not hang on mail delivery issues
+        try {
+            await transporter.sendMail(mailOptions)
+        } catch (mailErr) {
+            console.error("Failed to send verification email:", mailErr)
+        }
         
         res.status(201).json({ message: "User registered successfully. Please check your email to verify your account." })
     } catch (err) {
