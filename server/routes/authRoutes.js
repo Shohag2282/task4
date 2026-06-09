@@ -125,7 +125,8 @@ router.get('/verify', async (req, res) => {
                 <body><div class="box">
                     <h2>❌ Invalid or Expired Link</h2>
                     <p>This verification link has already been used or has expired. If you already verified, you can log in directly.</p>
-                    <a href="${frontendUrl}/login">Go to Login</a>
+                    <p style="font-size:13px;color:#888;">You can now close this tab and go to the app to log in.</p>
+                    <a href="${frontendUrl}">Open App</a>
                 </div></body></html>
             `)
         }
@@ -150,7 +151,7 @@ router.get('/verify', async (req, res) => {
             <body><div class="box">
                 <h2>✅ Email Verified Successfully!</h2>
                 <p>Your account has been activated. You can now log in to access the dashboard.</p>
-                <a href="${frontendUrl}/login">Go to Login</a>
+                <a href="${frontendUrl}">Go to App & Login</a>
             </div></body></html>
         `)
     } catch (err) {
