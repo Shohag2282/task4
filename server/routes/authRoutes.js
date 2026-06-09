@@ -2,21 +2,11 @@ import express from 'express'
 import { connectToDatabase } from '../lib/db.js'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
-import nodemailer from 'nodemailer'
+// Using native fetch to call Resend API (Node 18+ supports global fetch)
 
 const router = express.Router()
 
-// Nodemailer SMTP Transporter setup
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    family: 4, // Force IPv4 to avoid ENETUNREACH on Render's network (which doesn't support IPv6 outbound)
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-})
+// No Resend SDK; will use fetch to call Resend API directly
 
 // ── Register ──
 router.post('/register', async (req, res) => {
@@ -41,11 +31,7 @@ router.post('/register', async (req, res) => {
         const host = req.get('host')
         const verificationLink = `${protocol}://${host}/auth/verify?token=${verificationToken}`
         
-        const mailOptions = {
-            from: `"Auth App" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: 'Email Verification',
-            html: `
+        const htmlContent = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px;">
                     <h2 style="color: #0066cc; text-align: center;">Verify Your Email Address</h2>
                     <p>Thank you for signing up! Please verify your email address to activate your account and access the dashboard.</p>
@@ -56,12 +42,33 @@ router.post('/register', async (req, res) => {
                     <p style="font-size: 12px; color: #0066cc; word-break: break-all;">${verificationLink}</p>
                 </div>
             `
-        }
         
-        // Send email asynchronously in the background so registration does not hang on mail delivery issues
-        transporter.sendMail(mailOptions).catch(mailErr => {
-            console.error("Failed to send verification email in background:", mailErr)
-        })
+        // Send verification email via Resend API using fetch (async, non-blocking)
+        (async () => {
+            try {
+                const response = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        from: 'onboarding@resend.dev',
+                        to: email,
+                        subject: 'Verify Your Email Address',
+                        html: htmlContent
+                    })
+                })
+                const data = await response.json()
+                if (response.ok) {
+                    console.log('Verification email sent via Resend:', data)
+                } else {
+                    console.error('Resend API error:', data)
+                }
+            } catch (err) {
+                console.error('Failed to send verification email via Resend:', err)
+            }
+        })();
         
         res.status(201).json({ message: "User registered successfully. Please check your email to verify your account." })
     } catch (err) {
@@ -105,7 +112,7 @@ router.get('/verify', async (req, res) => {
         const db = await connectToDatabase()
         const [rows] = await db.query('SELECT * FROM users WHERE verification_token = ?', [token])
         if (rows.length === 0) {
-            return res.redirect('http://localhost:5173/login?error=invalid_token')
+            return res.redirect('https://task4-frontend.onrender.com/login?error=invalid_token')
         }
         
         await db.query(
@@ -113,7 +120,7 @@ router.get('/verify', async (req, res) => {
             [rows[0].id]
         )
         
-        res.redirect('http://localhost:5173/login?verified=true')
+        res.redirect('https://task4-frontend.onrender.com/login?verified=true')
     } catch (err) {
         console.error("Verification error:", err)
         res.status(500).send("Internal Server Error")
