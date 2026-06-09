@@ -50,19 +50,43 @@ router.post('/register', async (req, res) => {
                 </div>
             `
         
-        const mailOptions = {
-            from: `"Auth App" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: 'Email Verification',
-            html: htmlContent
-        }
+        const isProduction = process.env.RENDER === 'true'
 
-        // Send email synchronously/awaited so we can handle any immediate error
+        // Send verification email via hybrid dispatch (Resend HTTP on Render, Gmail SMTP locally)
         try {
-            await transporter.sendMail(mailOptions)
-            console.log('Verification email sent successfully via Gmail!')
+            if (isProduction) {
+                console.log('Production detected: Sending email via Resend HTTP API...')
+                const response = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        from: 'onboarding@resend.dev',
+                        to: email,
+                        subject: 'Verify Your Email Address',
+                        html: htmlContent
+                    })
+                })
+                const data = await response.json()
+                if (!response.ok) {
+                    throw new Error(data.message || JSON.stringify(data))
+                }
+                console.log('Verification email sent successfully via Resend API!', data)
+            } else {
+                console.log('Local environment detected: Sending email via Gmail SMTP...')
+                const mailOptions = {
+                    from: `"Auth App" <${process.env.EMAIL_USER}>`,
+                    to: email,
+                    subject: 'Email Verification',
+                    html: htmlContent
+                }
+                await transporter.sendMail(mailOptions)
+                console.log('Verification email sent successfully via Gmail SMTP!')
+            }
         } catch (mailErr) {
-            console.error('Failed to send verification email via Gmail:', mailErr)
+            console.error('Failed to send verification email:', mailErr)
             throw new Error(`Email sending failed: ${mailErr.message}`)
         }
         
