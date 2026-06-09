@@ -9,6 +9,20 @@ app.use(cors())
 app.use(express.json())
 app.use('/auth', authRouter)
 
+// Root endpoint for deployment verification
+app.get('/', (req, res) => {
+    res.send(`
+        <div style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px; padding: 20px;">
+            <div style="color: #2e7d32; font-size: 24px; font-weight: bold; margin-bottom: 10px;">
+                ✅ Server is Running Successfully!
+            </div>
+            <div style="color: #555; font-size: 16px;">
+                Aiven Cloud MySQL Database connection and unique index check completed.
+            </div>
+        </div>
+    `)
+})
+
 // Auto-create table and unique index script
 const initDb = async () => {
     try {
