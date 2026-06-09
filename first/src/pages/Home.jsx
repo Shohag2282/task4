@@ -41,12 +41,16 @@ const Home = () => {
     return () => clearInterval(interval)
   }, [])
 
+  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:300'
+    : 'https://task4-ots0.onrender.com'
+
   // Check if current logged-in user is still active in DB
   const checkCurrentUser = async () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     if (!user?.id) return
     try {
-      await axios.get(`https://task4-ots0.onrender.com/auth/check?id=${user.id}`)
+      await axios.get(`${API_BASE}/auth/check?id=${user.id}`)
     } catch (err) {
       if (err.response?.status === 403) {
         localStorage.removeItem('user')
@@ -57,7 +61,7 @@ const Home = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('https://task4-ots0.onrender.com/auth/users')
+      const res = await axios.get(`${API_BASE}/auth/users`)
       setUsers(res.data)
     } catch (err) { console.log(err) }
   }
@@ -79,21 +83,21 @@ const Home = () => {
   const handleBlock = async () => {
     if (!selectedIds.length) return
     await checkCurrentUser()
-    try { await axios.put('https://task4-ots0.onrender.com/auth/block', { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
+    try { await axios.put(`${API_BASE}/auth/block`, { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleUnblock = async () => {
     if (!selectedIds.length) return
     await checkCurrentUser()
-    try { await axios.put('https://task4-ots0.onrender.com/auth/unblock', { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
+    try { await axios.put(`${API_BASE}/auth/unblock`, { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleDelete = async () => {
     if (!selectedIds.length) return
     await checkCurrentUser()
-    try { await axios.delete('https://task4-ots0.onrender.com/auth/delete', { data: { ids: selectedIds } }); setSelectedIds([]); fetchUsers() } catch (e) {}
+    try { await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: selectedIds } }); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleDeleteUnverified = async () => {
     await checkCurrentUser()
-    try { await axios.delete('https://task4-ots0.onrender.com/auth/delete-unverified'); setSelectedIds([]); fetchUsers() } catch (e) {}
+    try { await axios.delete(`${API_BASE}/auth/delete-unverified`); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleLogout = () => { localStorage.removeItem('user'); navigate('/login') }
 

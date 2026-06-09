@@ -30,8 +30,12 @@ const Login = () => {
         setError("")
         setMessage("")
         setLoading(true)
+        const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:300'
+            : 'https://task4-ots0.onrender.com'
+
         try {
-            const response = await axios.post('https://task4-ots0.onrender.com/auth/login', values)
+            const response = await axios.post(`${API_BASE}/auth/login`, values)
             localStorage.setItem('user', JSON.stringify(response.data.user))
             navigate('/')
         } catch (err) {

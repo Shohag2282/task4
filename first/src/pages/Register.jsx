@@ -22,8 +22,12 @@ export const Register = () => {
         setError("")
         setMessage("")
         setLoading(true)
+        const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:300'
+            : 'https://task4-ots0.onrender.com'
+
         try {
-            const response = await axios.post('https://task4-ots0.onrender.com/auth/register', values)
+            const response = await axios.post(`${API_BASE}/auth/register`, values)
             setMessage(response.data.message || "Registration successful! Please check your email to verify your account.")
             setValues({ username: "", email: "", password: "" })
         } catch (err) {
