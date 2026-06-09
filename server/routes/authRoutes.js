@@ -2,11 +2,18 @@ import express from 'express'
 import { connectToDatabase } from '../lib/db.js'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
-// Using native fetch to call Resend API (Node 18+ supports global fetch)
+import nodemailer from 'nodemailer'
 
 const router = express.Router()
 
-// No Resend SDK; will use fetch to call Resend API directly
+// Gmail SMTP setup using nodemailer
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+})
 
 // ── Register ──
 router.post('/register', async (req, res) => {
@@ -43,32 +50,21 @@ router.post('/register', async (req, res) => {
                 </div>
             `
         
-        // Send verification email via Resend API using fetch (async, non-blocking)
-        (async () => {
-            try {
-                const response = await fetch('https://api.resend.com/emails', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        from: 'onboarding@resend.dev',
-                        to: email,
-                        subject: 'Verify Your Email Address',
-                        html: htmlContent
-                    })
-                })
-                const data = await response.json()
-                if (response.ok) {
-                    console.log('Verification email sent via Resend:', data)
-                } else {
-                    console.error('Resend API error:', data)
-                }
-            } catch (err) {
-                console.error('Failed to send verification email via Resend:', err)
-            }
-        })();
+        const mailOptions = {
+            from: `"Auth App" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: 'Email Verification',
+            html: htmlContent
+        }
+
+        // Send email synchronously/awaited so we can handle any immediate error
+        try {
+            await transporter.sendMail(mailOptions)
+            console.log('Verification email sent successfully via Gmail!')
+        } catch (mailErr) {
+            console.error('Failed to send verification email via Gmail:', mailErr)
+            throw new Error(`Email sending failed: ${mailErr.message}`)
+        }
         
         res.status(201).json({ message: "User registered successfully. Please check your email to verify your account." })
     } catch (err) {
