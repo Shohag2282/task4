@@ -104,11 +104,30 @@ router.get('/verify', async (req, res) => {
     const { token } = req.query
     if (!token) return res.status(400).send("Verification token is missing")
     
+    const frontendUrl = 'https://task4-frontend.onrender.com'
+
     try {
         const db = await connectToDatabase()
         const [rows] = await db.query('SELECT * FROM users WHERE verification_token = ?', [token])
         if (rows.length === 0) {
-            return res.redirect('https://task4-frontend.onrender.com/login?error=invalid_token')
+            return res.status(400).send(`
+                <!DOCTYPE html>
+                <html lang="en">
+                <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Invalid Token</title>
+                <style>
+                    body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f8f9fa; }
+                    .box { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
+                    h2 { color: #dc3545; } p { color: #666; }
+                    a { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+                    a:hover { background: #0052a3; }
+                </style></head>
+                <body><div class="box">
+                    <h2>❌ Invalid or Expired Link</h2>
+                    <p>This verification link has already been used or has expired. If you already verified, you can log in directly.</p>
+                    <a href="${frontendUrl}/login">Go to Login</a>
+                </div></body></html>
+            `)
         }
         
         await db.query(
@@ -116,7 +135,24 @@ router.get('/verify', async (req, res) => {
             [rows[0].id]
         )
         
-        res.redirect('https://task4-frontend.onrender.com/login?verified=true')
+        return res.status(200).send(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Email Verified</title>
+            <style>
+                body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f8f9fa; }
+                .box { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
+                h2 { color: #28a745; } p { color: #666; }
+                a { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+                a:hover { background: #0052a3; }
+            </style></head>
+            <body><div class="box">
+                <h2>✅ Email Verified Successfully!</h2>
+                <p>Your account has been activated. You can now log in to access the dashboard.</p>
+                <a href="${frontendUrl}/login">Go to Login</a>
+            </div></body></html>
+        `)
     } catch (err) {
         console.error("Verification error:", err)
         res.status(500).send("Internal Server Error")
