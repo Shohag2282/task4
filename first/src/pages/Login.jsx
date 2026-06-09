@@ -31,7 +31,7 @@ const Login = () => {
         setMessage("")
         setLoading(true)
         try {
-            const response = await axios.post('http://localhost:300/auth/login', values)
+            const response = await axios.post('https://task4-ots0.onrender.com/auth/login', values)
             localStorage.setItem('user', JSON.stringify(response.data.user))
             navigate('/')
         } catch (err) {

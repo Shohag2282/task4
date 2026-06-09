@@ -46,7 +46,7 @@ const Home = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     if (!user?.id) return
     try {
-      await axios.get(`http://localhost:300/auth/check?id=${user.id}`)
+      await axios.get(`https://task4-ots0.onrender.com/auth/check?id=${user.id}`)
     } catch (err) {
       if (err.response?.status === 403) {
         localStorage.removeItem('user')
@@ -57,7 +57,7 @@ const Home = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://localhost:300/auth/users')
+      const res = await axios.get('https://task4-ots0.onrender.com/auth/users')
       setUsers(res.data)
     } catch (err) { console.log(err) }
   }
@@ -79,21 +79,21 @@ const Home = () => {
   const handleBlock = async () => {
     if (!selectedIds.length) return
     await checkCurrentUser()
-    try { await axios.put('http://localhost:300/auth/block', { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
+    try { await axios.put('https://task4-ots0.onrender.com/auth/block', { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleUnblock = async () => {
     if (!selectedIds.length) return
     await checkCurrentUser()
-    try { await axios.put('http://localhost:300/auth/unblock', { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
+    try { await axios.put('https://task4-ots0.onrender.com/auth/unblock', { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleDelete = async () => {
     if (!selectedIds.length) return
     await checkCurrentUser()
-    try { await axios.delete('http://localhost:300/auth/delete', { data: { ids: selectedIds } }); setSelectedIds([]); fetchUsers() } catch (e) {}
+    try { await axios.delete('https://task4-ots0.onrender.com/auth/delete', { data: { ids: selectedIds } }); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleDeleteUnverified = async () => {
     await checkCurrentUser()
-    try { await axios.delete('http://localhost:300/auth/delete-unverified'); setSelectedIds([]); fetchUsers() } catch (e) {}
+    try { await axios.delete('https://task4-ots0.onrender.com/auth/delete-unverified'); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleLogout = () => { localStorage.removeItem('user'); navigate('/login') }
 

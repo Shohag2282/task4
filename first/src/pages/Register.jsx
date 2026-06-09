@@ -23,7 +23,7 @@ export const Register = () => {
         setMessage("")
         setLoading(true)
         try {
-            const response = await axios.post('http://localhost:300/auth/register', values)
+            const response = await axios.post('https://task4-ots0.onrender.com/auth/register', values)
             setMessage(response.data.message || "Registration successful! Please check your email to verify your account.")
             setValues({ username: "", email: "", password: "" })
         } catch (err) {
