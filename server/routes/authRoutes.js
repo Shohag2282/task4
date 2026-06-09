@@ -23,10 +23,9 @@ router.post('/register', async (req, res) => {
             [username, email, hashpassword, verificationToken]
         )
         
-        // Send verification email
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol
-        const host = req.get('host')
-        const verificationLink = `${protocol}://${host}/auth/verify?token=${verificationToken}`
+        // Always use the live backend URL so verification links work from any network
+        const backendUrl = process.env.BACKEND_URL || 'https://task4-ots0.onrender.com'
+        const verificationLink = `${backendUrl}/auth/verify?token=${verificationToken}`
         
         const htmlContent = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px;">
