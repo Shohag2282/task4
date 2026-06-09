@@ -57,12 +57,10 @@ router.post('/register', async (req, res) => {
             `
         }
         
-        // Wrap email sending in try-catch so registration does not hang on mail delivery issues
-        try {
-            await transporter.sendMail(mailOptions)
-        } catch (mailErr) {
-            console.error("Failed to send verification email:", mailErr)
-        }
+        // Send email asynchronously in the background so registration does not hang on mail delivery issues
+        transporter.sendMail(mailOptions).catch(mailErr => {
+            console.error("Failed to send verification email in background:", mailErr)
+        })
         
         res.status(201).json({ message: "User registered successfully. Please check your email to verify your account." })
     } catch (err) {
