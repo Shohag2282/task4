@@ -46,6 +46,7 @@ const Home = () => {
   // Note: toasts — array of { id, message, type } for temporary status notifications.
   const [toasts, setToasts] = useState([])
   const [showNotifications, setShowNotifications] = useState(false)
+  const [isSelfBlocked, setIsSelfBlocked] = useState(false)
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'Welcome!', message: 'Thank you for registering. Your account is active.', time: 'Just now', read: false, type: 'success' },
     { id: 2, title: 'Security Tip', message: 'Always log out when using a shared device.', time: '5m ago', read: false, type: 'info' },
@@ -84,6 +85,21 @@ const Home = () => {
     document.addEventListener('click', handleOutsideClick)
     return () => document.removeEventListener('click', handleOutsideClick)
   }, [])
+
+  useEffect(() => {
+    if (isSelfBlocked) {
+      const handleGlobalClick = () => {
+        handleLogout()
+      }
+      const timer = setTimeout(() => {
+        document.addEventListener('click', handleGlobalClick)
+      }, 100)
+      return () => {
+        clearTimeout(timer)
+        document.removeEventListener('click', handleGlobalClick)
+      }
+    }
+  }, [isSelfBlocked])
 
   // Note: addNotification — appends a new event notification to the real-time notification list.
   const addNotification = (title, message, type = 'info') => {
@@ -144,6 +160,11 @@ const Home = () => {
       setUsers(res.data)
     } catch (err) {
       console.log(err)
+      if (err.response?.status === 403) {
+        localStorage.removeItem('user')
+        navigate('/login')
+        return
+      }
       showToast('Failed to load users. Please refresh.', 'error')
     }
   }
@@ -170,17 +191,14 @@ const Home = () => {
 
   // IMPORTANT: handleBlock — blocks all selected users.
   // Note: checkCurrentUser is called first (5th requirement).
-  // Nota bene: Self-block shows "Blocked" in UI but does NOT immediately logout.
-  //            The user stays on the page and is logged out only on their next action.
+  // Nota bene: Self-block shows "Blocked" in UI and sets a global listener to logout on next click.
   const handleBlock = async () => {
     if (!selectedIds.length) return
     const isActive = await checkCurrentUser()
     if (!isActive) return
 
-    // IMPORTANT: Capture selectedIds into a local const BEFORE calling setSelectedIds([]).
-    // Nota bene: React state updates are async — the closure would see the cleared array
-    // if we used selectedIds directly after setSelectedIds([]).
     const idsToBlock = [...selectedIds]
+    const isSelfBlockedAction = idsToBlock.includes(getUniqIdValue(currentUser))
 
     // Optimistic update — instantly show Blocked in UI (including self)
     setUsers(prev => prev.map(u => idsToBlock.includes(getUniqIdValue(u)) ? { ...u, status: 'Blocked' } : u))
@@ -189,7 +207,12 @@ const Home = () => {
       await axios.put(`${API_BASE}/auth/block`, { ids: idsToBlock })
       showToast(`${idsToBlock.length} user(s) blocked successfully`, 'success')
       addNotification('Users Blocked', `Blocked ${idsToBlock.length} user(s) successfully`, 'warning')
-      fetchUsers()
+      
+      if (isSelfBlockedAction) {
+        setIsSelfBlocked(true)
+      } else {
+        fetchUsers()
+      }
     } catch (e) {
       showToast('Failed to block users. Please try again.', 'error')
       fetchUsers() // rollback on error
