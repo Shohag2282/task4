@@ -13,9 +13,8 @@ services:
         value: 20
 
   # Frontend Static Site
-  - type: web
+  - type: static
     name: task4-frontend
-    runtime: static
     rootDir: first
     buildCommand: npm install && npm run build
     staticPublishPath: dist
