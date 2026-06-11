@@ -171,7 +171,7 @@ router.get('/users', async (req, res) => {
     try {
         const db = await connectToDatabase()
         const [rows] = await db.query(
-            'SELECT id, username, email, status, last_login FROM users ORDER BY last_login DESC'
+            'SELECT id, username, email, status, last_login, (verification_token IS NULL) as is_verified FROM users ORDER BY last_login DESC'
         )
         res.status(200).json(rows)
     } catch (err) {

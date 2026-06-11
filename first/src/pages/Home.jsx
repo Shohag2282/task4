@@ -92,15 +92,21 @@ const Home = () => {
     // Optimistic update — instantly show Blocked in UI
     setUsers(prev => prev.map(u => selectedIds.includes(u.id) ? { ...u, status: 'Blocked' } : u))
     setSelectedIds([])
-    try { await axios.put(`${API_BASE}/auth/block`, { ids: selectedIds }) }
+    try { 
+      await axios.put(`${API_BASE}/auth/block`, { ids: selectedIds })
+      fetchUsers()
+    }
     catch (e) { fetchUsers() } // rollback on error
   }
   const handleUnblock = async () => {
     if (!selectedIds.length) return
-    // Optimistic update — instantly show Active in UI
-    setUsers(prev => prev.map(u => selectedIds.includes(u.id) ? { ...u, status: 'Active' } : u))
+    // Optimistic update — instantly show Active or Unverified in UI based on is_verified
+    setUsers(prev => prev.map(u => selectedIds.includes(u.id) ? { ...u, status: u.is_verified ? 'Active' : 'Unverified' } : u))
     setSelectedIds([])
-    try { await axios.put(`${API_BASE}/auth/unblock`, { ids: selectedIds }) }
+    try { 
+      await axios.put(`${API_BASE}/auth/unblock`, { ids: selectedIds })
+      fetchUsers()
+    }
     catch (e) { fetchUsers() } // rollback on error
   }
   const handleDelete = async () => {
@@ -115,7 +121,10 @@ const Home = () => {
     // Optimistic update — instantly remove from UI
     setUsers(prev => prev.filter(u => !selectedIds.includes(u.id)))
     setSelectedIds([])
-    try { await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: selectedIds } }) }
+    try { 
+      await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: selectedIds } })
+      fetchUsers()
+    }
     catch (e) { fetchUsers() } // rollback on error
   }
   const handleDeleteUnverified = async () => {
@@ -129,7 +138,10 @@ const Home = () => {
     // Optimistic update — instantly remove Unverified users from UI
     setUsers(prev => prev.filter(u => u.status !== 'Unverified'))
     setSelectedIds([])
-    try { await axios.delete(`${API_BASE}/auth/delete-unverified`) }
+    try { 
+      await axios.delete(`${API_BASE}/auth/delete-unverified`)
+      fetchUsers()
+    }
     catch (e) { fetchUsers() } // rollback on error
   }
   const handleLogout = () => { localStorage.removeItem('user'); navigate('/login') }
