@@ -45,6 +45,11 @@ const Home = () => {
   const [page, setPage] = useState(1)
   // Note: toasts — array of { id, message, type } for temporary status notifications.
   const [toasts, setToasts] = useState([])
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [notifications, setNotifications] = useState([
+    { id: 1, title: 'Welcome!', message: 'Thank you for registering. Your account is active.', time: 'Just now', read: false, type: 'success' },
+    { id: 2, title: 'Security Tip', message: 'Always log out when using a shared device.', time: '5m ago', read: false, type: 'info' },
+  ])
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}') || {}
 
   useEffect(() => {
@@ -69,6 +74,29 @@ const Home = () => {
     // Cleanup: eject the interceptor when the Home component unmounts
     return () => axios.interceptors.request.eject(interceptorId)
   }, [])
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.notification-container')) {
+        setShowNotifications(false)
+      }
+    }
+    document.addEventListener('click', handleOutsideClick)
+    return () => document.removeEventListener('click', handleOutsideClick)
+  }, [])
+
+  // Note: addNotification — appends a new event notification to the real-time notification list.
+  const addNotification = (title, message, type = 'info') => {
+    const newNotif = {
+      id: Date.now(),
+      title,
+      message,
+      time: 'Just now',
+      read: false,
+      type
+    }
+    setNotifications(prev => [newNotif, ...prev])
+  }
 
   // IMPORTANT: API_BASE — switches between local development and production backend URL.
   const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -160,6 +188,7 @@ const Home = () => {
     try {
       await axios.put(`${API_BASE}/auth/block`, { ids: idsToBlock })
       showToast(`${idsToBlock.length} user(s) blocked successfully`, 'success')
+      addNotification('Users Blocked', `Blocked ${idsToBlock.length} user(s) successfully`, 'warning')
       fetchUsers()
     } catch (e) {
       showToast('Failed to block users. Please try again.', 'error')
@@ -181,6 +210,7 @@ const Home = () => {
     try {
       await axios.put(`${API_BASE}/auth/unblock`, { ids: idsToUnblock })
       showToast(`${idsToUnblock.length} user(s) unblocked successfully`, 'success')
+      addNotification('Users Unblocked', `Unblocked ${idsToUnblock.length} user(s) successfully`, 'success')
       fetchUsers()
     } catch (e) {
       showToast('Failed to unblock users. Please try again.', 'error')
@@ -210,6 +240,7 @@ const Home = () => {
     try {
       await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: idsToDelete } })
       showToast(`${idsToDelete.length} user(s) deleted successfully`, 'success')
+      addNotification('Users Deleted', `Permanently deleted ${idsToDelete.length} user(s)`, 'error')
       fetchUsers()
     } catch (e) {
       showToast('Failed to delete users. Please try again.', 'error')
@@ -247,6 +278,7 @@ const Home = () => {
     try {
       await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: selectedUnverifiedIds } })
       showToast(`${selectedUnverifiedIds.length} unverified user(s) deleted`, 'success')
+      addNotification('Unverified Users Deleted', `Deleted ${selectedUnverifiedIds.length} unverified user(s)`, 'error')
       fetchUsers()
     } catch (e) {
       showToast('Failed to delete unverified users. Please try again.', 'error')
@@ -289,12 +321,69 @@ const Home = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path fillRule="evenodd" d="M10 2a6 6 0 0 0-6 6c0 1.887-.454 3.665-1.257 5.234a.75.75 0 0 0 .515 1.076 32.91 32.91 0 0 0 3.256.508 3.5 3.5 0 0 0 6.972 0 32.903 32.903 0 0 0 3.256-.508.75.75 0 0 0 .515-1.076A11.448 11.448 0 0 1 16 8a6 6 0 0 0-6-6ZM8.05 14.943a33.54 33.54 0 0 0 3.9 0 2 2 0 0 1-3.9 0Z" clipRule="evenodd" />
-            </svg>
-            <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></span>
-          </button>
+          <div className="relative notification-container">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              title="Notifications"
+              className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M10 2a6 6 0 0 0-6 6c0 1.887-.454 3.665-1.257 5.234a.75.75 0 0 0 .515 1.076 32.91 32.91 0 0 0 3.256.508 3.5 3.5 0 0 0 6.972 0 32.903 32.903 0 0 0 3.256-.508.75.75 0 0 0 .515-1.076A11.448 11.448 0 0 1 16 8a6 6 0 0 0-6-6ZM8.05 14.943a33.54 33.54 0 0 0 3.9 0 2 2 0 0 1-3.9 0Z" clipRule="evenodd" />
+              </svg>
+              {notifications.some(n => !n.read) && (
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-blue-600 rounded-full border-2 border-white"></span>
+              )}
+            </button>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-md border border-gray-200 shadow-xl py-1 z-30 text-left">
+                <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                  <span className="font-semibold text-gray-800 text-xs uppercase tracking-wider">Notifications</span>
+                  {notifications.some(n => !n.read) && (
+                    <button
+                      onClick={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
+                      className="text-[11px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-60 overflow-y-auto divide-y divide-gray-100">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-xs text-gray-400">No notifications</div>
+                  ) : (
+                    notifications.map(n => (
+                      <div
+                        key={n.id}
+                        onClick={() => setNotifications(prev => prev.map(notif => notif.id === n.id ? { ...notif, read: true } : notif))}
+                        className={`px-4 py-2.5 hover:bg-gray-50 cursor-pointer flex gap-2.5 items-start transition-colors ${!n.read ? 'bg-blue-50/20' : ''}`}
+                      >
+                        <div className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${
+                          n.type === 'success' ? 'bg-green-500' :
+                          n.type === 'warning' ? 'bg-amber-500' :
+                          n.type === 'error'   ? 'bg-red-500'   : 'bg-blue-500'
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs text-gray-800 ${!n.read ? 'font-semibold text-gray-900' : ''}`}>{n.title}</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5 break-words leading-relaxed">{n.message}</p>
+                          <span className="text-[10px] text-gray-400 block mt-1">{n.time}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {notifications.length > 0 && (
+                  <div className="px-4 py-1.5 border-t border-gray-100 text-center bg-gray-50/50">
+                    <button
+                      onClick={() => setNotifications([])}
+                      className="text-[10px] text-red-500 hover:text-red-700 font-medium cursor-pointer"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           <div
             title={`Logged in as ${currentUser.username || 'Admin'}`}
             className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold ${getAvatarColor(currentUser.username || 'A')}`}
