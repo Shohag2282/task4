@@ -80,7 +80,6 @@ router.post('/login', async (req, res) => {
         const [rows] = await db.query('SELECT * FROM users WHERE email=?', [email])
         if (rows.length === 0) return res.status(404).json({ message: "Email not found" })
         if (rows[0].status === 'Blocked') return res.status(403).json({ message: "Account is blocked" })
-        if (rows[0].status === 'Unverified') return res.status(403).json({ message: "Please verify your email to activate your account." })
         
         const isMatch = await bcrypt.compare(password, rows[0].password)
         if (!isMatch) return res.status(401).json({ message: "Wrong password" })
@@ -151,6 +150,7 @@ router.get('/verify', async (req, res) => {
 })
 
 // ── Check if current user is still active (5th requirement) ──
+// Unverified users are allowed — only Blocked users are kicked out
 router.get('/check', async (req, res) => {
     const { id } = req.query
     if (!id) return res.status(400).json({ message: "No user id provided" })
@@ -159,6 +159,7 @@ router.get('/check', async (req, res) => {
         const [rows] = await db.query('SELECT id, status FROM users WHERE id=?', [id])
         if (rows.length === 0) return res.status(403).json({ message: "User no longer exists" })
         if (rows[0].status === 'Blocked') return res.status(403).json({ message: "User is blocked" })
+        // Active and Unverified both allowed
         res.status(200).json({ message: "ok" })
     } catch (err) {
         res.status(500).json(err)
