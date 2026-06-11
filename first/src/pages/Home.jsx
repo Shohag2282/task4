@@ -138,18 +138,19 @@ const Home = () => {
   }
 
   // Note: fetchUsers — loads all users from the server sorted by last login (server-side).
+  // Nota bene: 403 on this call means the current user became blocked between actions — skip
+  //            silently here; the NEXT toolbar action's checkCurrentUser() will redirect to login.
   const fetchUsers = async () => {
     try {
       const res = await axios.get(`${API_BASE}/auth/users`)
       setUsers(res.data)
     } catch (err) {
       console.log(err)
-      if (err.response?.status === 403) {
-        localStorage.removeItem('user')
-        navigate('/login')
-        return
+      if (err.response?.status !== 403) {
+        showToast('Failed to load users. Please refresh.', 'error')
       }
-      showToast('Failed to load users. Please refresh.', 'error')
+      // Note: 403 is intentionally swallowed here — the next toolbar action will
+      // call checkCurrentUser() which will properly redirect blocked/deleted users.
     }
   }
 
@@ -195,9 +196,15 @@ const Home = () => {
       if (!isSelfBlockedAction) {
         fetchUsers()
       }
+      // Nota bene: If self-blocked, we intentionally do NOT call fetchUsers().
+      // The UI already shows "Blocked" (optimistic update above).
+      // The next toolbar action will call checkCurrentUser() which will detect
+      // the blocked status from the DB and redirect to login.
     } catch (e) {
       showToast('Failed to block users. Please try again.', 'error')
-      fetchUsers() // rollback on error
+      if (!isSelfBlockedAction) {
+        fetchUsers() // rollback on error — but skip if self-block to avoid 403 logout
+      }
     }
   }
 

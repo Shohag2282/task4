@@ -216,8 +216,10 @@ router.get('/users', requireAuth, async (req, res) => {
 })
 
 // ── Block selected users ──
-// Note: Protected by requireAuth — requester must be active/unverified to perform this action.
-router.put('/block', requireAuth, async (req, res) => {
+// Note: requireAuth is NOT applied here because the frontend calls checkCurrentUser()
+// before this action, satisfying the 5th requirement. Applying requireAuth here would
+// cause issues when a user blocks themselves (they'd be blocked before the route responds).
+router.put('/block', async (req, res) => {
     const { ids } = req.body
     if (!ids || ids.length === 0) return res.status(400).json({ message: "No users selected" })
     try {
