@@ -46,10 +46,21 @@ const Home = () => {
   // Note: toasts — array of { id, message, type } for temporary status notifications.
   const [toasts, setToasts] = useState([])
   const [showNotifications, setShowNotifications] = useState(false)
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: 'Welcome!', message: 'Thank you for registering. Your account is active.', time: 'Just now', read: false, type: 'success' },
-    { id: 2, title: 'Security Tip', message: 'Always log out when using a shared device.', time: '5m ago', read: false, type: 'info' },
-  ])
+  const [notifications, setNotifications] = useState(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    const isUnverified = user?.status === 'Unverified' || !user?.is_verified
+    const base = [
+      { id: 1, title: 'Welcome!', message: 'Thank you for registering. Your account is active.', time: 'Just now', read: false, type: 'success' },
+      { id: 2, title: 'Security Tip', message: 'Always log out when using a shared device.', time: '5m ago', read: false, type: 'info' },
+    ]
+    if (isUnverified) {
+      return [
+        { id: 0, title: '⚠️ Account Unverified', message: 'Your account is not verified. Unverified accounts will be blocked or deleted. Please verify your email.', time: 'Just now', read: false, type: 'warning' },
+        ...base
+      ]
+    }
+    return base
+  })
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}') || {}
 
   useEffect(() => {
@@ -373,7 +384,7 @@ const Home = () => {
       </div>
 
       {/* ── Navbar ── */}
-      <nav className="bg-white border-b border-gray-200 px-5 py-3 flex items-center justify-between shadow-sm sticky top-0 z-20">
+      <nav className="bg-white border-b border-gray-200 px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between shadow-sm sticky top-0 z-20 gap-3">
         <div className="flex items-center gap-3">
           <button className="text-gray-400 hover:text-gray-600 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -423,7 +434,8 @@ const Home = () => {
                         <div className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${
                           n.type === 'success' ? 'bg-green-500' :
                           n.type === 'warning' ? 'bg-amber-500' :
-                          n.type === 'error'   ? 'bg-red-500'   : 'bg-blue-500'
+                          n.type === 'error'   ? 'bg-red-500'   :
+                          n.type === 'info'    ? 'bg-blue-500'  : 'bg-gray-400'
                         }`} />
                         <div className="flex-1 min-w-0">
                           <p className={`text-xs text-gray-800 ${!n.read ? 'font-semibold text-gray-900' : ''}`}>{n.title}</p>
@@ -476,7 +488,7 @@ const Home = () => {
               IMPORTANT: Toolbar is ALWAYS visible — it never appears or disappears.
               Note: Buttons switch between enabled/disabled based on selection state.
               Nota bene: toolbarDisabled = true when selectedIds is empty. */}
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+          <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap items-center gap-2">
 
             {/* Block — text button with lock icon */}
             <button
@@ -575,10 +587,10 @@ const Home = () => {
                     />
                   </th>
                   <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3 hidden sm:table-cell">Email</th>
                   {/* Note: Sorted by this column descending on the server */}
-                  <th className="px-4 py-3">Last Login</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 hidden sm:table-cell">Last Login</th>
+                  <th className="px-4 py-3 hidden sm:table-cell">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -608,12 +620,15 @@ const Home = () => {
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${getAvatarColor(user.username)}`}>
                             {getInitials(user.username)}
                           </div>
-                          <span className="font-medium text-gray-900">{user.username}</span>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-gray-900">{user.username}</span>
+                            <span className="text-gray-500 text-[11px] sm:hidden">{user.email}</span>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{user.email}</td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{formatDate(user.last_login)}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{user.email}</td>
+                      <td className="px-4 py-3 text-gray-400 text-xs hidden sm:table-cell">{formatDate(user.last_login)}</td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
                           user.status === 'Active'  ? 'bg-green-100 text-green-700'  :
                           user.status === 'Blocked' ? 'bg-red-100 text-red-600'      :
@@ -630,7 +645,7 @@ const Home = () => {
           </div>
 
           {/* ── Pagination ── */}
-          <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+          <div className="px-5 py-3 border-t border-gray-100 flex flex-wrap items-center justify-between text-xs text-gray-500 gap-3">
             <span>
               Showing {users.length === 0 ? 0 : (page - 1) * ROWS_PER_PAGE + 1} to {Math.min(page * ROWS_PER_PAGE, users.length)} of {users.length} users
             </span>
