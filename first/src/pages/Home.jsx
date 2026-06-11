@@ -31,7 +31,7 @@ const Home = () => {
   const [users, setUsers] = useState([])
   const [selectedIds, setSelectedIds] = useState([])
   const [page, setPage] = useState(1)
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}') || {}
 
   useEffect(() => {
     if (!localStorage.getItem('user')) { navigate('/login'); return }
