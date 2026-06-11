@@ -114,7 +114,7 @@ const Home = () => {
   // IMPORTANT: checkCurrentUser — implements the 5th requirement from the task spec.
   // Before each protected action, the server is asked to verify the user still exists
   // and is not blocked. If the check fails (403), the user is logged out immediately.
-  // Nota bene: This is called at the START of every toolbar action handler.
+  // Nota bene: Uses plain fetch (NOT axios) so the X-User-Id interceptor does not interfere.
   const checkCurrentUser = async () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     if (!getUniqIdValue(user)) {
@@ -123,15 +123,14 @@ const Home = () => {
       return false
     }
     try {
-      await axios.get(`${API_BASE}/auth/check?id=${getUniqIdValue(user)}`)
-      return true
-    } catch (err) {
-      // Note: 403 means the user is blocked or deleted — redirect to login.
-      if (err.response?.status === 403) {
+      const res = await fetch(`${API_BASE}/auth/check?id=${getUniqIdValue(user)}`)
+      if (res.status === 403) {
         localStorage.removeItem('user')
         navigate('/login')
         return false
       }
+      return true
+    } catch (err) {
       // Nota bene: Network errors don't block the user — fail open.
       return true
     }
