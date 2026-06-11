@@ -82,18 +82,34 @@ const Home = () => {
 
   const handleBlock = async () => {
     if (!selectedIds.length) return
-    try { await axios.put(`${API_BASE}/auth/block`, { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
+    // Optimistic update — instantly show Blocked in UI
+    setUsers(prev => prev.map(u => selectedIds.includes(u.id) ? { ...u, status: 'Blocked' } : u))
+    setSelectedIds([])
+    try { await axios.put(`${API_BASE}/auth/block`, { ids: selectedIds }) }
+    catch (e) { fetchUsers() } // rollback on error
   }
   const handleUnblock = async () => {
     if (!selectedIds.length) return
-    try { await axios.put(`${API_BASE}/auth/unblock`, { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
+    // Optimistic update — instantly show Active in UI
+    setUsers(prev => prev.map(u => selectedIds.includes(u.id) ? { ...u, status: 'Active' } : u))
+    setSelectedIds([])
+    try { await axios.put(`${API_BASE}/auth/unblock`, { ids: selectedIds }) }
+    catch (e) { fetchUsers() } // rollback on error
   }
   const handleDelete = async () => {
     if (!selectedIds.length) return
-    try { await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: selectedIds } }); setSelectedIds([]); fetchUsers() } catch (e) {}
+    // Optimistic update — instantly remove from UI
+    setUsers(prev => prev.filter(u => !selectedIds.includes(u.id)))
+    setSelectedIds([])
+    try { await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: selectedIds } }) }
+    catch (e) { fetchUsers() } // rollback on error
   }
   const handleDeleteUnverified = async () => {
-    try { await axios.delete(`${API_BASE}/auth/delete-unverified`); setSelectedIds([]); fetchUsers() } catch (e) {}
+    // Optimistic update — instantly remove Unverified users from UI
+    setUsers(prev => prev.filter(u => u.status !== 'Unverified'))
+    setSelectedIds([])
+    try { await axios.delete(`${API_BASE}/auth/delete-unverified`) }
+    catch (e) { fetchUsers() } // rollback on error
   }
   const handleLogout = () => { localStorage.removeItem('user'); navigate('/login') }
 
