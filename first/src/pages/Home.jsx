@@ -46,7 +46,6 @@ const Home = () => {
   // Note: toasts — array of { id, message, type } for temporary status notifications.
   const [toasts, setToasts] = useState([])
   const [showNotifications, setShowNotifications] = useState(false)
-  const [isSelfBlocked, setIsSelfBlocked] = useState(false)
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'Welcome!', message: 'Thank you for registering. Your account is active.', time: 'Just now', read: false, type: 'success' },
     { id: 2, title: 'Security Tip', message: 'Always log out when using a shared device.', time: '5m ago', read: false, type: 'info' },
@@ -85,21 +84,6 @@ const Home = () => {
     document.addEventListener('click', handleOutsideClick)
     return () => document.removeEventListener('click', handleOutsideClick)
   }, [])
-
-  useEffect(() => {
-    if (isSelfBlocked) {
-      const handleGlobalClick = () => {
-        handleLogout()
-      }
-      const timer = setTimeout(() => {
-        document.addEventListener('click', handleGlobalClick)
-      }, 100)
-      return () => {
-        clearTimeout(timer)
-        document.removeEventListener('click', handleGlobalClick)
-      }
-    }
-  }, [isSelfBlocked])
 
   // Note: addNotification — appends a new event notification to the real-time notification list.
   const addNotification = (title, message, type = 'info') => {
@@ -208,9 +192,7 @@ const Home = () => {
       showToast(`${idsToBlock.length} user(s) blocked successfully`, 'success')
       addNotification('Users Blocked', `Blocked ${idsToBlock.length} user(s) successfully`, 'warning')
       
-      if (isSelfBlockedAction) {
-        setIsSelfBlocked(true)
-      } else {
+      if (!isSelfBlockedAction) {
         fetchUsers()
       }
     } catch (e) {
