@@ -89,11 +89,13 @@ const Home = () => {
     const isActive = await checkCurrentUser()
     if (!isActive) return
 
+    // Capture selectedIds before clearing (avoid React closure bug)
+    const idsToBlock = [...selectedIds]
     // Optimistic update — instantly show Blocked in UI (including self)
-    setUsers(prev => prev.map(u => selectedIds.includes(u.id) ? { ...u, status: 'Blocked' } : u))
+    setUsers(prev => prev.map(u => idsToBlock.includes(u.id) ? { ...u, status: 'Blocked' } : u))
     setSelectedIds([])
     try { 
-      await axios.put(`${API_BASE}/auth/block`, { ids: selectedIds })
+      await axios.put(`${API_BASE}/auth/block`, { ids: idsToBlock })
       fetchUsers()
     }
     catch (e) { fetchUsers() } // rollback on error
