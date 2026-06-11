@@ -219,7 +219,8 @@ const Home = () => {
 
   // IMPORTANT: handleBlock — blocks all selected users.
   // Note: checkCurrentUser is called first (5th requirement).
-  // Nota bene: Self-block shows "Blocked" in UI, then automatically logs out after 2 seconds.
+  // Nota bene: Self-block — user sees "Blocked" in UI, stays on home page,
+  //            redirected to login only on their NEXT action or page refresh.
   const handleBlock = async () => {
     if (!selectedIds.length) return
     const isActive = await checkCurrentUser()
@@ -235,14 +236,17 @@ const Home = () => {
     try {
       await axios.put(`${API_BASE}/auth/block`, { ids: idsToBlock })
       addNotification('Users Blocked', `Blocked ${idsToBlock.length} user(s) successfully`, 'warning')
-      
+
       if (isSelfBlockedAction) {
-        // IMPORTANT: Self-block detected — stay on home page, show warning toast.
-        // Nota bene: Do NOT auto-logout here. The user remains on the home page
-        // but the next action they attempt will call checkCurrentUser(), which will
-        // detect their blocked status (403) and redirect them to login at that point.
+        // IMPORTANT: Self-block detected — DO NOT call fetchUsers() here.
+        // Reason: fetchUsers() hits /auth/users which uses requireAuth middleware.
+        // requireAuth will return 403 for blocked users, which triggers the global
+        // axios response interceptor → immediate logout (not what we want here).
+        // Instead, the optimistic update already shows "Blocked" in the UI table.
+        // The user stays on home page and can see the table.
+        // Logout will happen naturally when they attempt the next action
+        // (checkCurrentUser → 403 → navigate to /login).
         showToast('You have blocked yourself. Any further action will log you out.', 'error')
-        fetchUsers()
       } else {
         showToast(`${idsToBlock.length} user(s) blocked successfully`, 'success')
         fetchUsers()
