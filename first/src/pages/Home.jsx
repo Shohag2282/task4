@@ -48,7 +48,7 @@ const Home = () => {
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
-    const isUnverified = user?.status === 'Unverified' || !user?.is_verified
+    const isUnverified = user?.status === 'Unverified'
     if (isUnverified) {
       return [
         { id: 0, title: '⚠️ Account Unverified', message: 'Your account is not verified. Unverified accounts will be blocked or deleted. Please verify your email.', time: 'Just now', read: false, type: 'warning' },
