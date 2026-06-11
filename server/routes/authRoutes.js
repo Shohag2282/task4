@@ -223,12 +223,14 @@ router.delete('/delete', async (req, res) => {
     }
 })
 
-// ── Delete only Unverified users ──
+// ── Delete selected Unverified users ──
 router.delete('/delete-unverified', async (req, res) => {
+    const { ids } = req.body
+    if (!ids || ids.length === 0) return res.status(400).json({ message: "No users selected" })
     try {
         const db = await connectToDatabase()
-        await db.query("DELETE FROM users WHERE status='Unverified'")
-        res.status(200).json({ message: "Unverified users deleted" })
+        await db.query("DELETE FROM users WHERE status='Unverified' AND id IN (?)", [ids])
+        res.status(200).json({ message: "Selected unverified users deleted" })
     } catch (err) {
         res.status(500).json(err)
     }

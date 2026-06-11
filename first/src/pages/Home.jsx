@@ -128,18 +128,28 @@ const Home = () => {
     catch (e) { fetchUsers() } // rollback on error
   }
   const handleDeleteUnverified = async () => {
-    const isSelfUnverified = currentUser.status === 'Unverified' || users.find(u => u.id === currentUser.id)?.status === 'Unverified'
-    if (isSelfUnverified) {
-      // If deleting unverified and self is unverified, log out immediately
-      try { await axios.delete(`${API_BASE}/auth/delete-unverified`) } catch (e) {}
+    // Get all selected users who are unverified
+    const selectedUnverifiedIds = users
+      .filter(u => selectedIds.includes(u.id) && u.status === 'Unverified')
+      .map(u => u.id)
+
+    if (selectedUnverifiedIds.length === 0) return
+
+    const isSelfSelected = selectedUnverifiedIds.includes(currentUser.id)
+    if (isSelfSelected) {
+      // If deleting self (unverified), log out immediately
+      try { 
+        await axios.delete(`${API_BASE}/auth/delete-unverified`, { data: { ids: selectedUnverifiedIds } }) 
+      } catch (e) {}
       handleLogout()
       return
     }
-    // Optimistic update — instantly remove Unverified users from UI
-    setUsers(prev => prev.filter(u => u.status !== 'Unverified'))
-    setSelectedIds([])
+
+    // Optimistic update — instantly remove selected Unverified users from UI
+    setUsers(prev => prev.filter(u => !selectedUnverifiedIds.includes(u.id)))
+    setSelectedIds(prev => prev.filter(id => !selectedUnverifiedIds.includes(id)))
     try { 
-      await axios.delete(`${API_BASE}/auth/delete-unverified`)
+      await axios.delete(`${API_BASE}/auth/delete-unverified`, { data: { ids: selectedUnverifiedIds } })
       fetchUsers()
     }
     catch (e) { fetchUsers() } // rollback on error
