@@ -89,14 +89,7 @@ const Home = () => {
     const isActive = await checkCurrentUser()
     if (!isActive) return
 
-    const isSelfSelected = selectedIds.includes(currentUser.id)
-    if (isSelfSelected) {
-      // If blocking self, log out immediately
-      try { await axios.put(`${API_BASE}/auth/block`, { ids: selectedIds }) } catch (e) {}
-      handleLogout()
-      return
-    }
-    // Optimistic update — instantly show Blocked in UI
+    // Optimistic update — instantly show Blocked in UI (including self)
     setUsers(prev => prev.map(u => selectedIds.includes(u.id) ? { ...u, status: 'Blocked' } : u))
     setSelectedIds([])
     try { 
