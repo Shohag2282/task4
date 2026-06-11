@@ -61,13 +61,34 @@ const Home = () => {
     // Note: This enables the server-side requireAuth middleware to validate the requester
     // without requiring changes to every individual API call.
     // Nota bene: The interceptor is cleaned up when the component unmounts.
-    const interceptorId = axios.interceptors.request.use((config) => {
+    const requestInterceptorId = axios.interceptors.request.use((config) => {
       const user = JSON.parse(localStorage.getItem('user') || '{}')
       if (user?.id) {
         config.headers['X-User-Id'] = String(getUniqIdValue(user))
       }
       return config
     })
+
+    // IMPORTANT: Global axios response interceptor — catches ANY 403 from the server
+    // (fetchUsers, block, unblock, delete) and immediately logs out the user.
+    // Note: This is the core mechanism for the self-block requirement:
+    //   1. User blocks themselves → stays on home page (no immediate logout)
+    //   2. Next axios request (e.g. fetchUsers auto-refresh) returns 403
+    //   3. This interceptor catches it → clears session → redirects to login
+    // Nota bene: Only triggers if user is currently stored in localStorage.
+    const responseInterceptorId = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 403) {
+          const user = JSON.parse(localStorage.getItem('user') || '{}')
+          if (user?.id) {
+            localStorage.removeItem('user')
+            navigate('/login')
+          }
+        }
+        return Promise.reject(error)
+      }
+    )
 
     // IMPORTANT: On page load/reload, check if current user is still active.
     // Nota bene: If the user had blocked themselves and reloaded, this will catch it
@@ -90,8 +111,11 @@ const Home = () => {
       fetchUsers()
     }
 
-    // Cleanup: eject the interceptor when the Home component unmounts
-    return () => axios.interceptors.request.eject(interceptorId)
+    // Cleanup: eject both interceptors when the Home component unmounts
+    return () => {
+      axios.interceptors.request.eject(requestInterceptorId)
+      axios.interceptors.response.eject(responseInterceptorId)
+    }
   }, [])
 
   useEffect(() => {
@@ -156,19 +180,20 @@ const Home = () => {
   }
 
   // Note: fetchUsers — loads all users from the server sorted by last login (server-side).
-  // Nota bene: 403 on this call means the current user became blocked between actions — skip
-  //            silently here; the NEXT toolbar action's checkCurrentUser() will redirect to login.
+  // IMPORTANT: 403 on this call means the current user is blocked or deleted.
+  // Nota bene: The axios response interceptor (set up in useEffect) will automatically
+  // catch the 403 and redirect to login — no manual handling needed here.
   const fetchUsers = async () => {
     try {
       const res = await axios.get(`${API_BASE}/auth/users`)
       setUsers(res.data)
     } catch (err) {
       console.log(err)
+      // Note: 403 is handled by the global response interceptor → auto-logout.
+      // Only show toast for other errors (network failures, 500, etc.).
       if (err.response?.status !== 403) {
         showToast('Failed to load users. Please refresh.', 'error')
       }
-      // Note: 403 is intentionally swallowed here — the next toolbar action will
-      // call checkCurrentUser() which will properly redirect blocked/deleted users.
     }
   }
 
@@ -212,13 +237,12 @@ const Home = () => {
       addNotification('Users Blocked', `Blocked ${idsToBlock.length} user(s) successfully`, 'warning')
       
       if (isSelfBlockedAction) {
-        // IMPORTANT: Self-block detected — show message then auto-logout after 2 seconds.
-        // Nota bene: 2-second delay lets the user see "Blocked" status in the UI before redirect.
-        showToast('You have blocked yourself. Logging out...', 'error')
-        setTimeout(() => {
-          localStorage.removeItem('user')
-          navigate('/login')
-        }, 2000)
+        // IMPORTANT: Self-block detected — stay on home page, show warning toast.
+        // Nota bene: Do NOT auto-logout here. The user remains on the home page
+        // but the next action they attempt will call checkCurrentUser(), which will
+        // detect their blocked status (403) and redirect them to login at that point.
+        showToast('You have blocked yourself. Any further action will log you out.', 'error')
+        fetchUsers()
       } else {
         showToast(`${idsToBlock.length} user(s) blocked successfully`, 'success')
         fetchUsers()
