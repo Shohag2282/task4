@@ -69,7 +69,26 @@ const Home = () => {
       return config
     })
 
-    fetchUsers()
+    // IMPORTANT: On page load/reload, check if current user is still active.
+    // Nota bene: If the user had blocked themselves and reloaded, this will catch it
+    // and redirect them to login before fetchUsers() is even called.
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (user?.id) {
+      fetch(`${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:3000'
+        : 'https://task4-ots0.onrender.com'}/auth/check?id=${user.id}`)
+        .then(res => {
+          if (res.status === 403) {
+            localStorage.removeItem('user')
+            navigate('/login')
+          } else {
+            fetchUsers()
+          }
+        })
+        .catch(() => fetchUsers()) // fail open on network error
+    } else {
+      fetchUsers()
+    }
 
     // Cleanup: eject the interceptor when the Home component unmounts
     return () => axios.interceptors.request.eject(interceptorId)
@@ -175,34 +194,39 @@ const Home = () => {
 
   // IMPORTANT: handleBlock — blocks all selected users.
   // Note: checkCurrentUser is called first (5th requirement).
-  // Nota bene: Self-block shows "Blocked" in UI and sets a global listener to logout on next click.
+  // Nota bene: Self-block shows "Blocked" in UI, then automatically logs out after 2 seconds.
   const handleBlock = async () => {
     if (!selectedIds.length) return
     const isActive = await checkCurrentUser()
     if (!isActive) return
 
     const idsToBlock = [...selectedIds]
-    const isSelfBlockedAction = idsToBlock.includes(getUniqIdValue(currentUser))
+    // Note: Use String() conversion to handle potential number/string type mismatch
+    const isSelfBlockedAction = idsToBlock.map(String).includes(String(getUniqIdValue(currentUser)))
 
     // Optimistic update — instantly show Blocked in UI (including self)
-    setUsers(prev => prev.map(u => idsToBlock.includes(getUniqIdValue(u)) ? { ...u, status: 'Blocked' } : u))
+    setUsers(prev => prev.map(u => idsToBlock.map(String).includes(String(getUniqIdValue(u))) ? { ...u, status: 'Blocked' } : u))
     setSelectedIds([])
     try {
       await axios.put(`${API_BASE}/auth/block`, { ids: idsToBlock })
-      showToast(`${idsToBlock.length} user(s) blocked successfully`, 'success')
       addNotification('Users Blocked', `Blocked ${idsToBlock.length} user(s) successfully`, 'warning')
       
-      if (!isSelfBlockedAction) {
+      if (isSelfBlockedAction) {
+        // IMPORTANT: Self-block detected — show message then auto-logout after 2 seconds.
+        // Nota bene: 2-second delay lets the user see "Blocked" status in the UI before redirect.
+        showToast('You have blocked yourself. Logging out...', 'error')
+        setTimeout(() => {
+          localStorage.removeItem('user')
+          navigate('/login')
+        }, 2000)
+      } else {
+        showToast(`${idsToBlock.length} user(s) blocked successfully`, 'success')
         fetchUsers()
       }
-      // Nota bene: If self-blocked, we intentionally do NOT call fetchUsers().
-      // The UI already shows "Blocked" (optimistic update above).
-      // The next toolbar action will call checkCurrentUser() which will detect
-      // the blocked status from the DB and redirect to login.
     } catch (e) {
       showToast('Failed to block users. Please try again.', 'error')
       if (!isSelfBlockedAction) {
-        fetchUsers() // rollback on error — but skip if self-block to avoid 403 logout
+        fetchUsers() // rollback on error
       }
     }
   }
