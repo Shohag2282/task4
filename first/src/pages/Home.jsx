@@ -139,7 +139,7 @@ const Home = () => {
     if (isSelfSelected) {
       // If deleting self (unverified), log out immediately
       try { 
-        await axios.delete(`${API_BASE}/auth/delete-unverified`, { data: { ids: selectedUnverifiedIds } }) 
+        await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: selectedUnverifiedIds } }) 
       } catch (e) {}
       handleLogout()
       return
@@ -149,7 +149,7 @@ const Home = () => {
     setUsers(prev => prev.filter(u => !selectedUnverifiedIds.includes(u.id)))
     setSelectedIds(prev => prev.filter(id => !selectedUnverifiedIds.includes(id)))
     try { 
-      await axios.delete(`${API_BASE}/auth/delete-unverified`, { data: { ids: selectedUnverifiedIds } })
+      await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: selectedUnverifiedIds } })
       fetchUsers()
     }
     catch (e) { fetchUsers() } // rollback on error
