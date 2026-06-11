@@ -36,9 +36,6 @@ const Home = () => {
   useEffect(() => {
     if (!localStorage.getItem('user')) { navigate('/login'); return }
     fetchUsers()
-    // ⚠️ 5th Requirement: Poll every 30s to check if current user is still active
-    const interval = setInterval(() => checkCurrentUser(), 30000)
-    return () => clearInterval(interval)
   }, [])
 
   const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -48,14 +45,21 @@ const Home = () => {
   // Check if current logged-in user is still active in DB
   const checkCurrentUser = async () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
-    if (!user?.id) return
+    if (!user?.id) {
+      localStorage.removeItem('user')
+      navigate('/login')
+      return false
+    }
     try {
       await axios.get(`${API_BASE}/auth/check?id=${user.id}`)
+      return true
     } catch (err) {
       if (err.response?.status === 403) {
         localStorage.removeItem('user')
         navigate('/login')
+        return false
       }
+      return true
     }
   }
 
@@ -82,6 +86,9 @@ const Home = () => {
 
   const handleBlock = async () => {
     if (!selectedIds.length) return
+    const isActive = await checkCurrentUser()
+    if (!isActive) return
+
     const isSelfSelected = selectedIds.includes(currentUser.id)
     if (isSelfSelected) {
       // If blocking self, log out immediately
@@ -100,6 +107,9 @@ const Home = () => {
   }
   const handleUnblock = async () => {
     if (!selectedIds.length) return
+    const isActive = await checkCurrentUser()
+    if (!isActive) return
+
     // Optimistic update — instantly show Active or Unverified in UI based on is_verified
     setUsers(prev => prev.map(u => selectedIds.includes(u.id) ? { ...u, status: u.is_verified ? 'Active' : 'Unverified' } : u))
     setSelectedIds([])
@@ -111,6 +121,9 @@ const Home = () => {
   }
   const handleDelete = async () => {
     if (!selectedIds.length) return
+    const isActive = await checkCurrentUser()
+    if (!isActive) return
+
     const isSelfSelected = selectedIds.includes(currentUser.id)
     if (isSelfSelected) {
       // If deleting self, log out immediately
@@ -134,6 +147,8 @@ const Home = () => {
       .map(u => u.id)
 
     if (selectedUnverifiedIds.length === 0) return
+    const isActive = await checkCurrentUser()
+    if (!isActive) return
 
     const isSelfSelected = selectedUnverifiedIds.includes(currentUser.id)
     if (isSelfSelected) {
