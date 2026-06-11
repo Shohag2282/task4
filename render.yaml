@@ -1,0 +1,23 @@
+services:
+  # Backend API
+  - type: web
+    name: task4-backend
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: PORT
+        value: 3000
+
+  # Frontend Static Site
+  - type: web
+    name: task4-frontend
+    runtime: static
+    rootDir: first
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
