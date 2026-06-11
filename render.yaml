@@ -9,6 +9,8 @@ services:
     envVars:
       - key: PORT
         value: 3000
+      - key: NODE_VERSION
+        value: 20
 
   # Frontend Static Site
   - type: web
@@ -17,6 +19,9 @@ services:
     rootDir: first
     buildCommand: npm install && npm run build
     staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20
     routes:
       - type: rewrite
         source: /*
