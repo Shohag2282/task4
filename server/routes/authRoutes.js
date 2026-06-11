@@ -1,6 +1,6 @@
 import express from 'express'
 import { connectToDatabase } from '../lib/db.js'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 
 const router = express.Router()
