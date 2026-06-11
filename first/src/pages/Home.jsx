@@ -82,6 +82,13 @@ const Home = () => {
 
   const handleBlock = async () => {
     if (!selectedIds.length) return
+    const isSelfSelected = selectedIds.includes(currentUser.id)
+    if (isSelfSelected) {
+      // If blocking self, log out immediately
+      try { await axios.put(`${API_BASE}/auth/block`, { ids: selectedIds }) } catch (e) {}
+      handleLogout()
+      return
+    }
     // Optimistic update — instantly show Blocked in UI
     setUsers(prev => prev.map(u => selectedIds.includes(u.id) ? { ...u, status: 'Blocked' } : u))
     setSelectedIds([])
@@ -98,6 +105,13 @@ const Home = () => {
   }
   const handleDelete = async () => {
     if (!selectedIds.length) return
+    const isSelfSelected = selectedIds.includes(currentUser.id)
+    if (isSelfSelected) {
+      // If deleting self, log out immediately
+      try { await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: selectedIds } }) } catch (e) {}
+      handleLogout()
+      return
+    }
     // Optimistic update — instantly remove from UI
     setUsers(prev => prev.filter(u => !selectedIds.includes(u.id)))
     setSelectedIds([])
@@ -105,6 +119,13 @@ const Home = () => {
     catch (e) { fetchUsers() } // rollback on error
   }
   const handleDeleteUnverified = async () => {
+    const isSelfUnverified = currentUser.status === 'Unverified' || users.find(u => u.id === currentUser.id)?.status === 'Unverified'
+    if (isSelfUnverified) {
+      // If deleting unverified and self is unverified, log out immediately
+      try { await axios.delete(`${API_BASE}/auth/delete-unverified`) } catch (e) {}
+      handleLogout()
+      return
+    }
     // Optimistic update — instantly remove Unverified users from UI
     setUsers(prev => prev.filter(u => u.status !== 'Unverified'))
     setSelectedIds([])
