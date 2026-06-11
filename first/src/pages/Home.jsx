@@ -82,21 +82,17 @@ const Home = () => {
 
   const handleBlock = async () => {
     if (!selectedIds.length) return
-    await checkCurrentUser()
     try { await axios.put(`${API_BASE}/auth/block`, { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleUnblock = async () => {
     if (!selectedIds.length) return
-    await checkCurrentUser()
     try { await axios.put(`${API_BASE}/auth/unblock`, { ids: selectedIds }); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleDelete = async () => {
     if (!selectedIds.length) return
-    await checkCurrentUser()
     try { await axios.delete(`${API_BASE}/auth/delete`, { data: { ids: selectedIds } }); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleDeleteUnverified = async () => {
-    await checkCurrentUser()
     try { await axios.delete(`${API_BASE}/auth/delete-unverified`); setSelectedIds([]); fetchUsers() } catch (e) {}
   }
   const handleLogout = () => { localStorage.removeItem('user'); navigate('/login') }
