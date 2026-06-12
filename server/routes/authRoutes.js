@@ -136,16 +136,18 @@ router.post('/login', async (req, res) => {
     }
 })
 
-// ── Verify Email ──
-// Note: Clicking the link in the email changes status from 'Unverified' to 'Active'.
-// Nota bene: If the user is 'Blocked', their status remains 'Blocked' (not overwritten).
+// ── Verify Email (Step 1 — GET) ──
+// IMPORTANT: GET only shows a confirmation page — does NOT activate the account yet.
+// Note: This prevents email clients (Gmail, Outlook, etc.) from auto-activating accounts
+//       by pre-fetching the verification link for preview/spam scanning purposes.
+// Nota bene: The actual activation happens only when the user clicks "Confirm" (POST).
 router.get('/verify', async (req, res) => {
     const { token } = req.query
     if (!token) return res.status(400).send("Verification token is missing")
 
     try {
         const db = await connectToDatabase()
-        const [rows] = await db.query('SELECT * FROM users WHERE verification_token = ?', [token])
+        const [rows] = await db.query('SELECT id, status FROM users WHERE verification_token = ?', [token])
         if (rows.length === 0) {
             return res.status(400).send(`
                 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
@@ -158,6 +160,71 @@ router.get('/verify', async (req, res) => {
             `)
         }
 
+        // Note: Show confirmation page — user must actively click the button to activate.
+        const backendUrl = process.env.BACKEND_URL || 'https://task4-ots0.onrender.com'
+        return res.status(200).send(`
+            <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+            <title>Confirm Email Verification</title>
+            <style>
+                body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8f9fa}
+                .box{background:white;padding:40px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);text-align:center;max-width:400px}
+                h2{color:#0066cc}p{color:#666;font-size:15px;line-height:1.6}
+                button{padding:12px 28px;background:#0066cc;color:white;border:none;border-radius:6px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:10px}
+                button:hover{background:#0052a3}
+                #msg{margin-top:16px;font-size:14px;color:#333}
+            </style>
+            </head><body><div class="box">
+            <h2>✉️ Confirm Your Email</h2>
+            <p>Click the button below to verify your email address and activate your account.</p>
+            <button onclick="confirmVerification()">Confirm Email</button>
+            <div id="msg"></div>
+            <script>
+                async function confirmVerification() {
+                    document.querySelector('button').disabled = true;
+                    document.getElementById('msg').textContent = 'Verifying...';
+                    try {
+                        const res = await fetch('${backendUrl}/auth/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token: '${token}' })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            document.querySelector('button').style.display = 'none';
+                            document.getElementById('msg').innerHTML = '<span style="color:#28a745;font-size:18px">✅ Email Verified!</span><br><span style="color:#666">Your account is now active. You can close this tab and log in.</span>';
+                        } else {
+                            document.getElementById('msg').innerHTML = '<span style="color:#dc3545">' + (data.message || 'Verification failed.') + '</span>';
+                            document.querySelector('button').disabled = false;
+                        }
+                    } catch(e) {
+                        document.getElementById('msg').innerHTML = '<span style="color:#dc3545">Network error. Please try again.</span>';
+                        document.querySelector('button').disabled = false;
+                    }
+                }
+            </script>
+            </div></body></html>
+        `)
+    } catch (err) {
+        console.error("Verification error:", err)
+        res.status(500).send("Internal Server Error")
+    }
+})
+
+// ── Verify Email (Step 2 — POST) ──
+// IMPORTANT: This is the actual activation step — only triggered by the user's explicit click.
+// Note: Sets status to 'Active' (unless Blocked) and clears the verification_token.
+// Nota bene: Token is consumed (set to NULL) so the link cannot be used again.
+router.post('/verify', async (req, res) => {
+    const { token } = req.body
+    if (!token) return res.status(400).json({ message: "Verification token is missing" })
+
+    try {
+        const db = await connectToDatabase()
+        const [rows] = await db.query('SELECT id, status FROM users WHERE verification_token = ?', [token])
+        if (rows.length === 0) {
+            return res.status(400).json({ message: "This verification link has already been used or has expired." })
+        }
+
         // IMPORTANT: Only update to 'Active' if not currently blocked.
         // Nota bene: 'Blocked' status takes priority over email verification.
         const newStatus = rows[0].status === 'Blocked' ? 'Blocked' : 'Active'
@@ -166,18 +233,10 @@ router.get('/verify', async (req, res) => {
             [newStatus, rows[0].id]
         )
 
-        return res.status(200).send(`
-            <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-            <title>Email Verified</title>
-            <style>body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8f9fa}.box{background:white;padding:40px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);text-align:center;max-width:400px}h2{color:#28a745}p{color:#666;font-size:15px;line-height:1.6}</style>
-            </head><body><div class="box">
-            <h2>✅ Email Verified Successfully!</h2>
-            <p>Your account has been activated. You can now log in to access the dashboard.</p>
-            </div></body></html>
-        `)
+        return res.status(200).json({ message: "Email verified successfully. Your account is now active." })
     } catch (err) {
-        console.error("Verification error:", err)
-        res.status(500).send("Internal Server Error")
+        console.error("Verification POST error:", err)
+        res.status(500).json({ message: "Internal Server Error" })
     }
 })
 
